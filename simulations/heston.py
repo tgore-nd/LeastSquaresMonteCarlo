@@ -30,7 +30,7 @@ def generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0: float, r: float
     # Sample correlated Brownian motions under risk-neutral measure
     Z = np.random.multivariate_normal(mu, cov, (N, M))
     for i in range(1, N + 1):
-        S[i] = S[i - 1] * np.exp((r - 0.5 * v[i - 1])*dt + np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 0])
+        S[i] = S[i - 1] * np.exp((r - 0.5 * v[i - 1]) * dt + np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 0])
         v[i] = np.maximum(v[i - 1] + kappa*(theta - v[i - 1]) * dt + sigma * np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 1], 0)
     
     return S, v
