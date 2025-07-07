@@ -1,9 +1,9 @@
 import numpy as np
 
-def generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0: float, r: float, N, M) -> tuple[np.array, np.array]:
+def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, rho: float, v0: float, S0: float, r: float, N, M) -> tuple[np.ndarray, np.ndarray]:
     """
     Inputs:
-     - tau    : time of simulation
+     - tau    : time of simulation in years
      - kappa  : rate of mean reversion in variance process
      - theta  : long-term mean of variance process
      - sigma  : vol of vol / volatility of variance process

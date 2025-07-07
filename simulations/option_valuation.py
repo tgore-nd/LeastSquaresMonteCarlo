@@ -4,14 +4,14 @@ from simulations import heston
 from typing import Literal
 from math_apps import regression
 
-def get_exercise_values(S: np.array, K: float, r: float, type: Literal["call", "put"]) -> np.array:
+def get_exercise_values(S: np.ndarray, K: float, r: float, tau: float, type: Literal["call", "put"]) -> np.ndarray:
     # Define option value function
     if type.lower() == "call":
         def option_value(S: np.array, K: float):
-            return np.maximum(S - K, np.zeros(S.shape)) # add: risk-free rate discount!
+            return np.maximum(S - K, np.zeros(S.shape)) * np.exp(-r*tau)
     elif type.lower() == "put":
         def option_value(S: np.array, K: float):
-            return np.maximum(K - S, np.zeros(S.shape))
+            return np.maximum(K - S, np.zeros(S.shape)) * np.exp(-r*tau)
     else:
         raise ValueError("Argument 'type' must be either 'call' or 'put'")
     
@@ -19,7 +19,7 @@ def get_exercise_values(S: np.array, K: float, r: float, type: Literal["call", "
     return option_value(S, K)
 
 
-def estimate_continuation_values(S: np.array, K: float, r: float, type: Literal["call", "put"]) -> np.array:
+def estimate_continuation_values(S: np.ndarray, K: float, r: float, type: Literal["call", "put"]) -> np.ndarray:
     continuation_values = np.zeros(S.shape)
     exercise_values = get_exercise_values(S, K, r, type)
     continuation_values[:, S.shape[1] - 1] = exercise_values[:, S.shape[1] - 1]
@@ -35,7 +35,7 @@ def estimate_continuation_values(S: np.array, K: float, r: float, type: Literal[
     return np.maximum(continuation_values, np.zeros(continuation_values.shape))
 
 
-def find_stopping_points(S: np.array):
+def find_stopping_points(S: np.ndarray):
     pass
 
 
