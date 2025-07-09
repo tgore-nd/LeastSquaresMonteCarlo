@@ -30,10 +30,10 @@ def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, 
     # Sample correlated Brownian motions under risk-neutral measure
     Z = np.random.multivariate_normal(mu, cov, (N, M))
     for i in range(1, N + 1):
-        S[i] = S[i - 1] * np.exp((r - 0.5 * v[i - 1]) * dt + np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 0])
-        v[i] = np.maximum(v[i - 1] + kappa*(theta - v[i - 1]) * dt + sigma * np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 1], 0)
+        S[i, :] = S[i - 1] * np.exp((r - 0.5 * v[i - 1]) * dt + np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 0])
+        v[i, :] = np.maximum(v[i - 1] + kappa*(theta - v[i - 1]) * dt + sigma * np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 1], 0)
     
-    return S, v
+    return S.T, v.T # take the transpose so this works more nicely with the regression seen in Longstaff-Schwartz
 
 if __name__ == "__main__":
     kappa = 2.0
@@ -45,4 +45,4 @@ if __name__ == "__main__":
     S0 = 100.
     tau = 1.0
     # Test getting price matrix
-    print(generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, 100, 10)[0])
+    print(generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, 100, 10)[0][:, 0])
