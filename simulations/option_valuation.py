@@ -1,5 +1,4 @@
 import numpy as np
-import polars as pl
 from simulations import heston
 from typing import Literal
 from math_apps import regression
@@ -8,7 +7,7 @@ def get_exercise_values(S: np.ndarray, K: float, type: Literal["call", "put"]) -
     # Define option value function
     if type.lower() == "call":
         def option_value(S: np.array, K: float):
-            return np.maximum(S - K, np.zeros_like(S)), S > K # tau = 1 since we are computing the value one step in the future
+            return np.maximum(S - K, np.zeros_like(S)), S > K
     elif type.lower() == "put":
         def option_value(S: np.array, K: float):
             return np.maximum(K - S, np.zeros_like(S)), K > S
@@ -19,7 +18,7 @@ def get_exercise_values(S: np.ndarray, K: float, type: Literal["call", "put"]) -
     return option_value(S, K)
 
 
-def estimate_stopping_points(S: np.ndarray, K: float, r: float, type: Literal["call", "put"]) -> np.ndarray:
+def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["call", "put"]) -> np.ndarray:
     # Estimate continuation values
     continuation_values = np.zeros(S.shape)
     exercise_values, option_ITM = get_exercise_values(S, K, type)
@@ -29,13 +28,13 @@ def estimate_stopping_points(S: np.ndarray, K: float, r: float, type: Literal["c
 
         # only use paths where the option is ITM at t
         X = np.concat([[S[:, t][option_ITM[:, t]]], [np.square(S[:, t])[option_ITM[:, t]]]]).T # stock price at t (note: transpose makes it a column vector)
-        y = exercise_values[:, t + 1][option_ITM[:, t]] * np.exp(-r) # continuation value at t = exercise value at t + 1
+        y = exercise_values[:, t + 1][option_ITM[:, t]] * np.exp(-r) # continuation value at t = exercise value at t + 1; tau = 1 since we are computing the value one step in the future
 
         linear_regressor.fit(X, y)
         continuation_values[:, t][option_ITM[:, t]] = linear_regressor.predict(X)
 
 
-    continuation_values = np.maximum(continuation_values, np.zeros(continuation_values.shape))
+    continuation_values = np.maximum(continuation_values, np.zeros_like(continuation_values))
     
     # Stopping points: exercise > continuation
     stopping_rules = ((exercise_values >= continuation_values) & ((exercise_values != 0) | (continuation_values != 0)))[:, 1:] # control for false positive when both matrices are zero
@@ -46,7 +45,13 @@ def estimate_stopping_points(S: np.ndarray, K: float, r: float, type: Literal["c
         if idx.size > 0:
             stopping_rules[i, idx[0] + 1:] = False
 
-    return stopping_rules
+    exercise_values[:, 1:][~stopping_rules] = 0 # zero out elements where we don't exercise
+    
+    # Discount cashflows back to t = 0
+    for t in range(exercise_values.shape[1]):
+        exercise_values[:, t] *= np.exp(-r*t)
+    
+    return exercise_values
 
 
 if __name__ == "__main__":
@@ -62,8 +67,8 @@ if __name__ == "__main__":
     K = 100
 
     # Get some sample values
-    #S = heston.generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, 100, 10)[0]
-    #print(S.shape)
+    # S = heston.generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, 100, 10)[0]
+    # print(S[:, 0])
 
     # Paper example
     K = 1.10
@@ -79,4 +84,4 @@ if __name__ == "__main__":
         [1.00, 0.88, 1.22, 1.34]
     ])
 
-    print(pl.DataFrame(estimate_stopping_points(S, K, r, "put")))
+    print(estimate_cash_flow_matrix(S, K, r, "put"))
