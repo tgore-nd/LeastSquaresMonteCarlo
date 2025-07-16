@@ -4,6 +4,7 @@ from typing import Literal
 from math_apps import regression
 
 def get_exercise_values(S: np.ndarray, K: float, type: Literal["call", "put"]) -> tuple[np.ndarray, np.ndarray]:
+    """Get the value from exercising the option at each time step."""
     # Define option value function
     if type.lower() == "call":
         def option_value(S: np.array, K: float):
@@ -18,7 +19,8 @@ def get_exercise_values(S: np.ndarray, K: float, type: Literal["call", "put"]) -
     return option_value(S, K)
 
 
-def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["call", "put"]) -> np.ndarray:
+def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["call", "put"], include_t0_column: bool = True) -> np.ndarray:
+    """Return a matrix of estimated cashflows for each path."""
     # Estimate continuation values
     continuation_values = np.zeros(S.shape)
     exercise_values, option_ITM = get_exercise_values(S, K, type)
@@ -51,6 +53,8 @@ def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["
     for t in range(exercise_values.shape[1]):
         exercise_values[:, t] *= np.exp(-r*t)
     
+    if not include_t0_column: return exercise_values[:, 1:]
+
     return exercise_values
 
 
