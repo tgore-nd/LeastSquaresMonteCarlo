@@ -3,6 +3,7 @@ from simulations import heston
 from typing import Literal
 from math_apps import regression
 
+
 def get_exercise_values(S: np.ndarray, K: float, type: Literal["call", "put"]) -> tuple[np.ndarray, np.ndarray]:
     """Get the value from exercising the option at each time step."""
     # Define option value function
@@ -58,6 +59,13 @@ def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["
     return exercise_values
 
 
+def estimate_option_value(S: np.ndarray, K: float, r: float, type: Literal["call", "put"]):
+    """Estimate the continuation value of an option using least-squares Monte Carlo (LCM)."""
+    cash_flow_matrix = estimate_cash_flow_matrix(S, K, r, type, include_t0_column=False)
+
+    return np.sum(np.mean(cash_flow_matrix, axis=0)) # average each path (already discounted), then add all averages
+
+
 if __name__ == "__main__":
     kappa = 2.0
     theta = 0.04
@@ -87,5 +95,7 @@ if __name__ == "__main__":
         [1.00, 0.92, 0.84, 1.01],
         [1.00, 0.88, 1.22, 1.34]
     ])
+    x = estimate_cash_flow_matrix(S, K, r, "put", include_t0_column=False)
+    print(x)
 
-    print(estimate_cash_flow_matrix(S, K, r, "put"))
+    print(np.sum(np.mean(x, axis=0))) # this exactly equals the value in Longstaff-Schwartz
