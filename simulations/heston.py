@@ -14,7 +14,7 @@ def simulate_chunk(args: tuple[np.ndarray, float, float, float, float, float, fl
     return S
 
 
-def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, rho: float, v0: float, S0: float, r: float, N, M, num_parallel_procs: int = 5) -> tuple[np.ndarray, np.ndarray]:
+def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, rho: float, v0: float, S0: float, r: float, N: int, M: int, num_parallel_procs: int = 5) -> np.ndarray:
     """
     Inputs:
      - tau    : time of simulation in years
@@ -58,4 +58,4 @@ if __name__ == "__main__":
     S0 = 100.
     tau = 1.0
     # Test getting price matrix
-    print(generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, 390, 10000))
+    print(generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, 390, 1000))

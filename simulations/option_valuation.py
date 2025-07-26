@@ -8,10 +8,10 @@ def get_exercise_values(S: np.ndarray, K: float, type: Literal["call", "put"]) -
     """Get the value from exercising the option at each time step."""
     # Define option value function
     if type.lower() == "call":
-        def option_value(S: np.array, K: float):
+        def option_value(S: np.ndarray, K: float):
             return np.maximum(S - K, np.zeros_like(S)), S > K
     elif type.lower() == "put":
-        def option_value(S: np.array, K: float):
+        def option_value(S: np.ndarray, K: float):
             return np.maximum(K - S, np.zeros_like(S)), K > S
     else:
         raise ValueError("Argument 'type' must be either 'call' or 'put'")
@@ -59,30 +59,17 @@ def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["
     return exercise_values
 
 
-def estimate_option_value(S: np.ndarray, K: float, r: float, type: Literal["call", "put"]):
+def estimate_option_value(S: np.ndarray, K: float, r: float, type: Literal["call", "put"]) -> float:
     """Estimate the continuation value of an option using least-squares Monte Carlo (LCM)."""
     cash_flow_matrix = estimate_cash_flow_matrix(S, K, r, type, include_t0_column=False)
 
     return np.sum(np.mean(cash_flow_matrix, axis=0)) # average each path (already discounted), then add all averages
 
 
-if __name__ == "__main__":
-    kappa = 2.0
-    theta = 0.04
-    sigma = 0.3
-    rho = -0.7
-    v0 = 0.04
-    r = 0.01
-    S0 = 100.
-    tau = 1.0
-
-    K = 100
-
-    # Get some sample values
-    # S = heston.generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, 100, 10)[0]
-    # print(S[:, 0])
-
-    # Paper example
+def paper_example() -> None:
+    """Estimate the continuation value of a put with strike K = 1.10 and risk-free rate r = 6%
+    
+    Exactly replicates the value predicted by Longstaff, Schwartz (2001)."""
     K = 1.10
     r = 0.06
     S = np.array([
@@ -95,7 +82,8 @@ if __name__ == "__main__":
         [1.00, 0.92, 0.84, 1.01],
         [1.00, 0.88, 1.22, 1.34]
     ])
-    x = estimate_cash_flow_matrix(S, K, r, "put", include_t0_column=False)
-    print(x)
+    
+    print(estimate_option_value(S, K, r, "put")) # this exactly equals the value in the paper
 
-    print(np.sum(np.mean(x, axis=0))) # this exactly equals the value in Longstaff-Schwartz
+if __name__ == "__main__":
+    paper_example()

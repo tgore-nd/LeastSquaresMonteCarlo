@@ -4,7 +4,7 @@ class LinearRegressor:
     def __init__(self):
         self.parameters = None
     
-    def fit(self, X: np.array, y: np.ndarray, use_cholesky: bool = True) -> None:
+    def fit(self, X: np.ndarray, y: np.ndarray, use_cholesky: bool = True) -> None:
         """Fit the LinearRegressor to some data."""
         # Add intercept term: X = [1, x1, ...]
         X = np.concatenate([np.ones((X.shape[0], 1)), X], axis=1)
