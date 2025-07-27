@@ -1,7 +1,6 @@
 import numpy as np
-from simulations import heston
-from typing import Literal
-from math_apps import regression
+from typing import Literal, Callable
+from math_apps import regression, basis_expansions
 
 
 def get_exercise_values(S: np.ndarray, K: float, type: Literal["call", "put"]) -> tuple[np.ndarray, np.ndarray]:
@@ -20,7 +19,7 @@ def get_exercise_values(S: np.ndarray, K: float, type: Literal["call", "put"]) -
     return option_value(S, K)
 
 
-def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["call", "put"], include_t0_column: bool = True) -> np.ndarray:
+def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["call", "put"], basis_expansion: Callable, N: int, include_t0_column: bool = True) -> np.ndarray:
     """Return a matrix of estimated cashflows for each path."""
     # Estimate continuation values
     continuation_values = np.zeros(S.shape)
@@ -30,7 +29,8 @@ def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["
         linear_regressor = regression.LinearRegressor()
 
         # only use paths where the option is ITM at t
-        X = np.concat([[S[:, t][option_ITM[:, t]]], [np.square(S[:, t])[option_ITM[:, t]]]]).T # stock price at t (note: transpose makes it a column vector)
+        X = basis_expansion(S[:, t][option_ITM[:, t]], N) # stock price at t
+
         y = exercise_values[:, t + 1][option_ITM[:, t]] * np.exp(-r) # continuation value at t = exercise value at t + 1; tau = 1 since we are computing the value one step in the future
 
         linear_regressor.fit(X, y)
@@ -59,9 +59,9 @@ def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["
     return exercise_values
 
 
-def estimate_option_value(S: np.ndarray, K: float, r: float, type: Literal["call", "put"]) -> float:
-    """Estimate the continuation value of an option using least-squares Monte Carlo (LCM)."""
-    cash_flow_matrix = estimate_cash_flow_matrix(S, K, r, type, include_t0_column=False)
+def estimate_continuation_value(S: np.ndarray, K: float, r: float, type: Literal["call", "put"], basis_expansion: Callable = basis_expansions.polynomial_basis, N: int = 2) -> float:
+    """Estimate the continuation value of an option using least-squares Monte Carlo (LCM). Use an Nth-degree basis_expansion."""
+    cash_flow_matrix = estimate_cash_flow_matrix(S, K, r, type, basis_expansion, N, include_t0_column=False)
 
     return np.sum(np.mean(cash_flow_matrix, axis=0)) # average each path (already discounted), then add all averages
 
@@ -81,9 +81,9 @@ def paper_example() -> None:
         [1.00, 0.76, 0.77, 0.90],
         [1.00, 0.92, 0.84, 1.01],
         [1.00, 0.88, 1.22, 1.34]
-    ])
+    ]) # M > N
     
-    print(estimate_option_value(S, K, r, "put")) # this exactly equals the value in the paper
+    print(estimate_continuation_value(S, K, r, "put")) # this exactly equals the value in the paper for squared polynomial basis expansion
 
 if __name__ == "__main__":
     paper_example()
