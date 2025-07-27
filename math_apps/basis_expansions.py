@@ -9,7 +9,7 @@ def polynomial_basis(X: np.ndarray, N: int) -> np.ndarray:
     return np.column_stack([X, *[X ** n for n in range(2, N + 1)]])
 
 
-def laguerre_basis(X: np.ndarray, N: int, i: int = 0) -> np.ndarray:
+def laguerre_basis(X: np.ndarray, N: int) -> np.ndarray:
     """Take an Nth-degree Laguerre basis expansion of vector X. The original feature is removed!"""
     L = np.zeros((X.shape[0], N))
     L[:, 0] = 1.0 # L0 = 1
@@ -25,7 +25,7 @@ def laguerre_basis(X: np.ndarray, N: int, i: int = 0) -> np.ndarray:
     return np.column_stack([X, *[L[:, i] for i in range(L.shape[1])]])[:, 1:]
 
 
-def legendre_basis(X: np.ndarray, N: int, i: int = 0) -> np.ndarray:
+def legendre_basis(X: np.ndarray, N: int) -> np.ndarray:
     """Take an Nth-degree Legendre basis expansion of vector X. The original feature is removed!"""
     P = np.zeros((X.shape[0], N))
     P[:, 0] = 1.0 # P0 = 1
@@ -40,7 +40,7 @@ def legendre_basis(X: np.ndarray, N: int, i: int = 0) -> np.ndarray:
     return np.column_stack([X, *[P[:, i] for i in range(P.shape[1])]])[:, 1:]
 
 
-def hermite_basis(X: np.ndarray, N: int, i: int = 0, type: Literal["probabilist", "physicist"] = "probabilist") -> np.ndarray:
+def hermite_basis(X: np.ndarray, N: int, type: Literal["probabilist", "physicist"] = "probabilist") -> np.ndarray:
     """Take an Nth-degree Hermite basis expansion of vector X. The original feature is removed!"""
     H = np.zeros((X.shape[0], N))
     H[:, 0] = 1.0
