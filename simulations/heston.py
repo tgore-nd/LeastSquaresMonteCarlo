@@ -1,5 +1,5 @@
 import numpy as np
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 
 
 def simulate_chunk(args: tuple[np.ndarray, float, float, float, float, float, float, float, int]):
@@ -10,11 +10,11 @@ def simulate_chunk(args: tuple[np.ndarray, float, float, float, float, float, fl
     for i in range(1, N + 1):
         S[i, :] = S[i - 1] * np.exp((r - 0.5 * v[i - 1]) * dt + np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 0])
         v[i, :] = np.maximum(v[i - 1] + kappa*(theta - v[i - 1]) * dt + sigma * np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 1], 0)
-     
-    return S
+
+    return S.T
 
 
-def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, rho: float, v0: float, S0: float, r: float, N: int, M: int, num_parallel_procs: int = 5) -> np.ndarray:
+def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, rho: float, v0: float, S0: float, r: float, N: int, M: int, num_parallel_procs: int = cpu_count()) -> np.ndarray:
     """
     Inputs:
      - tau    : time of simulation in years
@@ -46,7 +46,7 @@ def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, 
     with Pool(num_parallel_procs) as pool:
         results = pool.map(simulate_chunk, args)
     
-    return np.concatenate(results, axis=0).T # take the transpose so this works more nicely with the regression seen in Longstaff-Schwartz
+    return np.concatenate(results, axis=0) # take the transpose so this works more nicely with the regression seen in Longstaff-Schwartz
 
 if __name__ == "__main__":
     kappa = 2.0
@@ -57,5 +57,7 @@ if __name__ == "__main__":
     r = 0.01
     S0 = 100.
     tau = 1.0
+    
     # Test getting price matrix
-    print(generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, 390, 1000))
+    S = generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, 390, 1000)
+    print(S)
