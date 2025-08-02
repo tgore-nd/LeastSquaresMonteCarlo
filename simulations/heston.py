@@ -2,8 +2,7 @@ import numpy as np
 from multiprocessing import Pool, cpu_count
 
 
-def simulate_chunk(args: tuple[np.ndarray, float, float, float, float, float, float, float, int]):
-    Z, S0, v0, r, dt, kappa, sigma, theta, N = args # for some reason, multiprocessing.Pool can't handle more than 3-4 arguments, so we unpack them as a tuple
+def simulate_batch_heston(Z: np.ndarray, S0: float, v0: float, r: float, dt: float, kappa: float, sigma: float, theta: float, N: int):
     num_paths_in_chunk = Z.shape[1]
     S = np.full(shape=(N + 1, num_paths_in_chunk), fill_value=S0)
     v = np.full(shape=(N + 1, num_paths_in_chunk), fill_value=v0)
@@ -12,6 +11,42 @@ def simulate_chunk(args: tuple[np.ndarray, float, float, float, float, float, fl
         v[i, :] = np.maximum(v[i - 1] + kappa*(theta - v[i - 1]) * dt + sigma * np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 1], 0)
 
     return S.T
+
+
+def simulate_batch_heston_hull_white(S0: float, v0: float, r0: float, kappa: float, sigma: float, theta: float, rho: float, a: float, b: float, eta: float, tau: float, N: int, n_paths: int):
+    dt = tau / N
+
+    S_paths = np.zeros((n_paths, N + 1))
+    v_paths = np.zeros((n_paths, N + 1))
+    r_paths = np.zeros((n_paths, N + 1))
+
+    S_paths[:, 0] = S0
+    v_paths[:, 0] = v0
+    r_paths[:, 0] = r0
+
+    for t in range(1, N + 1):
+        dW1 = np.random.randn(n_paths) * np.sqrt(dt)
+        dW2 = np.random.randn(n_paths) * np.sqrt(dt)
+        dW3 = np.random.randn(n_paths) * np.sqrt(dt)
+
+        dW2_corr = rho * dW1 + np.sqrt(1 - rho**2) * dW2
+
+        v_prev = v_paths[:, t - 1]
+        v_sqrt = np.sqrt(np.maximum(v_prev, 1e-8))
+        v_next = v_prev + kappa * (theta - v_prev) * dt + sigma * v_sqrt * dW2_corr
+        v_next = np.maximum(v_next, 0.0)
+
+        r_prev = r_paths[:, t - 1]
+        r_next = r_prev + a * (b - r_prev) * dt + eta * dW3
+
+        S_prev = S_paths[:, t - 1]
+        S_next = S_prev * np.exp((r_prev - 0.5 * v_prev) * dt + np.sqrt(v_prev) * dW1)
+
+        v_paths[:, t] = v_next
+        r_paths[:, t] = r_next
+        S_paths[:, t] = S_next
+
+    return S_paths, v_paths, r_paths
 
 
 def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, rho: float, v0: float, S0: float, r: float, N: int, M: int, num_parallel_procs: int = cpu_count()) -> np.ndarray:
@@ -41,12 +76,28 @@ def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, 
     # Sample correlated Brownian motions under risk-neutral measure
     Z = np.random.multivariate_normal(mu, cov, (N, M))
     chunks = np.array_split(np.arange(M), num_parallel_procs)
-    args = [(Z[:, idxs, :], S0, v0, r, dt, kappa, sigma, theta, N) for idx, idxs in enumerate(chunks)]
     
     with Pool(num_parallel_procs) as pool:
-        results = pool.map(simulate_chunk, args)
+        results = pool.starmap(simulate_batch_heston, [(Z[:, idxs, :], S0, v0, r, dt, kappa, sigma, theta, N) for idx, idxs in enumerate(chunks)])
     
     return np.concatenate(results, axis=0) # take the transpose so this works more nicely with the regression seen in Longstaff-Schwartz
+
+
+def generate_heston_hull_white_paths(tau: float, kappa: float, theta: float, sigma: float, rho: float, v0: float, S0: float, r0: float, a: float, b: float, eta: float, N: int, M: int, n_procs=cpu_count()):
+    # Split work
+    paths_per_proc = [M // n_procs] * n_procs
+    for i in range(M % n_procs):
+        paths_per_proc[i] += 1
+
+    with Pool(n_procs) as pool:
+        results = pool.starmap(simulate_batch_heston_hull_white, [(S0, v0, r0, kappa, sigma, theta, rho, a, b, eta, tau, N, n) for n in paths_per_proc])
+
+    S_all = np.vstack([res[0] for res in results])
+    v_all = np.vstack([res[1] for res in results])
+    r_all = np.vstack([res[2] for res in results])
+
+    return S_all, v_all, r_all
+
 
 if __name__ == "__main__":
     kappa = 2.0
@@ -57,7 +108,10 @@ if __name__ == "__main__":
     r = 0.01
     S0 = 100.
     tau = 1.0
-    
+    a = 0.3
+    b = 0.05
+    eta = 0.02
+
     # Test getting price matrix
-    S = generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, 390, 1000)
+    S = generate_heston_hull_white_paths(tau, kappa, theta, sigma, rho, v0, S0, r, a, b, eta, N=390, M=1000)[0]
     print(S)
