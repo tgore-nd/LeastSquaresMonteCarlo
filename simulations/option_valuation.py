@@ -1,6 +1,8 @@
 import numpy as np
-from typing import Literal, Callable
+import time
+from typing import Literal, Callable, Type
 from math_apps import regression, basis_expansions
+from heston import generate_heston_paths
 
 
 def get_exercise_values(S: np.ndarray, K: float, type: Literal["call", "put"]) -> tuple[np.ndarray, np.ndarray]:
@@ -19,22 +21,22 @@ def get_exercise_values(S: np.ndarray, K: float, type: Literal["call", "put"]) -
     return option_value(S, K)
 
 
-def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["call", "put"], basis_expansion: Callable, N: int, include_t0_column: bool = True) -> np.ndarray:
+def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["call", "put"], basis_expansion: Callable, regressor_class: Callable, N: int, include_t0_column: bool = True) -> np.ndarray:
     """Return a matrix of estimated cashflows for each path."""
     # Estimate continuation values
     continuation_values = np.zeros(S.shape)
     exercise_values, option_ITM = get_exercise_values(S, K, type)
     continuation_values[:, S.shape[1] - 1] = exercise_values[:, S.shape[1] - 1]
     for t in range(S.shape[1] - 2, 0, -1):
-        linear_regressor = regression.LinearRegressor()
+        regressor = regressor_class()
 
         # only use paths where the option is ITM at t
         X = basis_expansion(S[:, t][option_ITM[:, t]], N) # stock price at t
 
         y = exercise_values[:, t + 1][option_ITM[:, t]] * np.exp(-r) # continuation value at t = exercise value at t + 1; tau = 1 since we are computing the value one step in the future
 
-        linear_regressor.fit(X, y)
-        continuation_values[:, t][option_ITM[:, t]] = linear_regressor.predict(X)
+        regressor.fit(X, y)
+        continuation_values[:, t][option_ITM[:, t]] = regressor.predict(X)
 
 
     continuation_values = np.maximum(continuation_values, np.zeros_like(continuation_values))
@@ -59,9 +61,9 @@ def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float, type: Literal["
     return exercise_values
 
 
-def estimate_continuation_value(S: np.ndarray, K: float, r: float, type: Literal["call", "put"], basis_expansion: Callable = basis_expansions.polynomial_basis, N: int = 2) -> float:
+def estimate_continuation_value(S: np.ndarray, K: float, r: float, type: Literal["call", "put"], basis_expansion: Callable = basis_expansions.polynomial_basis, regressor_class: Type[regression.LinearRegressor] | Type[regression.DecisionTreeRegressor] | Type[regression.RandomForestRegressor] = regression.LinearRegressor, N: int = 2) -> float:
     """Estimate the continuation value of an option using least-squares Monte Carlo (LCM). Use an Nth-degree basis_expansion."""
-    cash_flow_matrix = estimate_cash_flow_matrix(S, K, r, type, basis_expansion, N, include_t0_column=False)
+    cash_flow_matrix = estimate_cash_flow_matrix(S, K, r, type, basis_expansion, regressor_class, N, include_t0_column=False)
 
     return np.sum(np.mean(cash_flow_matrix, axis=0)) # average each path (already discounted), then add all averages
 
@@ -84,6 +86,22 @@ def paper_example() -> None:
     ]) # M > N
     
     print(estimate_continuation_value(S, K, r, "put")) # this exactly equals the value in the paper for squared polynomial basis expansion
+    print(estimate_continuation_value(S, K, r, "put", regressor_class=regression.DecisionTreeRegressor)) # the decision tree also converges nicely
+    print(estimate_continuation_value(S, K, r, "put", regressor_class=regression.RandomForestRegressor))
 
 if __name__ == "__main__":
-    paper_example()
+    kappa = 2.0
+    theta = 0.04
+    sigma = 0.3
+    rho = -0.7
+    v0 = 0.04
+    r = 0.04
+    S0 = 100.
+    tau = 1.0
+    K = 90.
+
+    start = time.perf_counter()
+    S = generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, 1000, 1700)
+    print(estimate_continuation_value(S, K, r, "call"))
+    end = time.perf_counter()
+    print(f"Elapsed time: {end - start} seconds")
