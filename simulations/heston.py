@@ -10,11 +10,11 @@ def simulate_batch_heston(Z: np.ndarray, S0: float, v0: float, r: float, dt: flo
         S[i, :] = S[i - 1] * np.exp((r - 0.5 * v[i - 1]) * dt + np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 0])
         v[i, :] = np.maximum(v[i - 1] + kappa*(theta - v[i - 1]) * dt + sigma * np.sqrt(v[i - 1] * dt) * Z[i - 1, :, 1], 0)
 
-    return S.T
+    return S.T, v.T
 
 
 def simulate_batch_heston_hull_white(S0: float, v0: float, r0: float, kappa: float, sigma: float, theta: float, rho: float, a: float, b: float, eta: float, tau: float, N: int, n_paths: int):
-    dt = tau / N
+    dt = tau / (N - 3)
 
     S_paths = np.zeros((n_paths, N + 1))
     v_paths = np.zeros((n_paths, N + 1))
@@ -49,7 +49,7 @@ def simulate_batch_heston_hull_white(S0: float, v0: float, r0: float, kappa: flo
     return S_paths, v_paths, r_paths
 
 
-def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, rho: float, v0: float, S0: float, r: float, N: int, M: int, num_parallel_procs: int = cpu_count()) -> np.ndarray:
+def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, rho: float, v0: float, S0: float, r: float, N: int, M: int, num_parallel_procs: int = cpu_count()) -> tuple[np.ndarray, np.ndarray]:
     """
     Inputs:
      - tau    : time of simulation in years
@@ -79,8 +79,13 @@ def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, 
     
     with Pool(num_parallel_procs) as pool:
         results = pool.starmap(simulate_batch_heston, [(Z[:, idxs, :], S0, v0, r, dt, kappa, sigma, theta, N) for idx, idxs in enumerate(chunks)])
+        pool.close()
+        pool.join()
     
-    return np.concatenate(results, axis=0) # take the transpose so this works more nicely with the regression seen in Longstaff-Schwartz
+    S_all = np.vstack([res[0] for res in results])
+    v_all = np.vstack([res[1] for res in results])
+
+    return S_all, v_all # take the transpose so this works more nicely with the regression seen in Longstaff-Schwartz
 
 
 def generate_heston_hull_white_paths(tau: float, kappa: float, theta: float, sigma: float, rho: float, v0: float, S0: float, r0: float, a: float, b: float, eta: float, N: int, M: int, n_procs=cpu_count()):
@@ -91,6 +96,8 @@ def generate_heston_hull_white_paths(tau: float, kappa: float, theta: float, sig
 
     with Pool(n_procs) as pool:
         results = pool.starmap(simulate_batch_heston_hull_white, [(S0, v0, r0, kappa, sigma, theta, rho, a, b, eta, tau, N, n) for n in paths_per_proc])
+        pool.close()
+        pool.join()
 
     S_all = np.vstack([res[0] for res in results])
     v_all = np.vstack([res[1] for res in results])
