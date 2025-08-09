@@ -6,7 +6,7 @@ from typing import Callable
 from multiprocessing import Pool, cpu_count
 
 
-def estimate_convergence_path(basis_expansion: Callable, S_master: np.ndarray, K: float, r: float, basis_expansion_degree: int = 2, avg_horizon: int = 6, tol: float = 1e-4) -> tuple[int, list[int], list[float]] | None:
+def estimate_convergence_path(basis_expansion: Callable, S_master: np.ndarray, K: float, r: float | np.ndarray, v: None | np.ndarray, tau: float, basis_expansion_degree: int = 2, avg_horizon: int = 6, tol: float = 1e-4) -> tuple[int, list[int], list[float]] | None:
     change = np.inf
     current_avg_change = np.inf
     prev_continuation_value = 0
@@ -22,7 +22,7 @@ def estimate_convergence_path(basis_expansion: Callable, S_master: np.ndarray, K
         num_paths += 1
 
         S = S_master[:num_paths, :]
-        current_continuation_value = estimate_continuation_value(S, K, r, "call", basis_expansion, N=basis_expansion_degree)
+        current_continuation_value = estimate_continuation_value(S, K, r, v, tau, "call", basis_expansion, N=basis_expansion_degree)
 
         change = abs(current_continuation_value - prev_continuation_value)
         continuation_values.append(current_continuation_value)
@@ -55,11 +55,11 @@ def estimate_optimal_basis_degree(basis_expansion: Callable, degree_range: range
     K = 90.
 
     total_num_paths = 10000
-    S_master = generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, N = 1000, M = total_num_paths, num_parallel_procs=10) # Note that if we don't use pseudoinversion, we mandate that M >= N to avoid singular matrix
+    S, v = generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, r, N = 1000, M = total_num_paths, num_parallel_procs=10)
 
     # Evaluate many degree expansions in parallel
     with Pool(min(len(degree_range), cpu_count())) as pool:
-        results = pool.starmap(estimate_convergence_path, [(basis_expansion, S_master, K, r, degree) for degree in degree_range])
+        results = pool.starmap(estimate_convergence_path, [(basis_expansion, S, K, r, v, tau, degree) for degree in degree_range])
 
     lower_limit = min(degree_range)
     stopping_points = [(i + lower_limit, result[0]) for i, result in enumerate(results) if result is not None]
