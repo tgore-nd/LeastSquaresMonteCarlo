@@ -5,24 +5,28 @@ from typing import Literal
 
 
 class LinearRegressor:
-    def __init__(self):
+    def __init__(self, l: float = 0.0):
         self.parameters = None
+        self.l = l
     
     def fit(self, X: np.ndarray, y: np.ndarray, use_cholesky: bool = True) -> None:
         """Fit the LinearRegressor to some data."""
         # Add intercept term: X = [1, x1, ...]
         X = np.concatenate([np.ones((X.shape[0], 1)), X], axis=1)
-        xtx = X.T @ X
+        n_features = X.shape[1]
+        I = np.eye(n_features)
+        I[0, 0] = 0 # don't regularize intercept
+        xtx = X.T @ X + I * self.l
 
         if self._is_singular(xtx): # check if singular
             self.parameters = np.linalg.pinv(xtx) @ X.T @ y
             return
 
         if use_cholesky:
-            A = X.T @ X # LHS of normal equation (times beta)
+            A = X.T @ X + I * self.l # LHS of normal equation (times beta)
             b = X.T @ y # RHS of normal equation
 
-            # Compute cholesky factorization: A = L @ L.T
+            # Compute Cholesky factorization: A = L @ L.T
             L = np.linalg.cholesky(A)
 
             # Solve Lz = b
