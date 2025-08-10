@@ -1,8 +1,6 @@
 import numpy as np
 from typing import Literal
 
-# Legendre, Hermite, Spline, Chebyshev, and Jacobi
-
 
 def polynomial_basis(X: np.ndarray, N: int) -> np.ndarray:
     """Take an Nth-degree polynomial basis expansion of vector X."""

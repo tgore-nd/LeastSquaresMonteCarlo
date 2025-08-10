@@ -1,5 +1,6 @@
 import numpy as np
-from typing import Literal, Callable
+import time
+from typing import Literal
 from scipy.interpolate import RegularGridInterpolator
 
 
@@ -239,9 +240,6 @@ def heston_hull_white_ADI(option_type: Literal["call", "put"], S0: float, v0: fl
 
 
 if __name__ == "__main__":
-    # Parameters
-    tau = 1.0
-
     # Heston params
     kappa = 2.0
     theta = 0.04
@@ -266,6 +264,9 @@ if __name__ == "__main__":
     N_S, N_v, N_r = 20, 10, 10
     M_time = 100
 
+    start = time.perf_counter()
     # V = cn_max_payoff("put", S0, S_max, K, tau, 0.03, sigma, N_S, M_time)
     V = heston_hull_white_ADI("put", S0, v0, r0, K, S_max, v_max, r_max, N_S, N_v, N_r, M_time, tau, kappa, theta, sigma, rho, a, b, eta)
-    print(V)
+    end = time.perf_counter()
+    print(f"Elapsed time: {end - start} seconds")
+    print(f"Option value: {V}")

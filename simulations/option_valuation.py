@@ -134,8 +134,8 @@ if __name__ == "__main__":
     tau = 0.5
 
     start = time.perf_counter()
-    S, v, r = generate_heston_hull_white_paths(tau, kappa, theta, sigma, rho, v0, S0, r0, a, b, eta, 500, 20000)
-    # S, v = generate_heston_paths(tau, kappa, theta, sigma, rho, v0, S0, 0.03, 40, 10000) # N = 40 seems to be good for basis degree = 5
-    print(estimate_continuation_value(S, K, r, v, tau, "put", N = 5, basis_expansion=basis_expansions.polynomial_basis, regressor_class=regression.LinearRegressor))
+    S, v, r = generate_heston_hull_white_paths(tau, kappa, theta, sigma, rho, v0, S0, r0, a, b, eta, 380, 10000)
+    print("Begin estimation")
+    print(estimate_continuation_value(S, K, r, v, tau, "put", N = 3, basis_expansion=basis_expansions.laguerre_basis, regressor_class=regression.LinearRegressor))
     end = time.perf_counter()
     print(f"Elapsed time: {end - start} seconds")
