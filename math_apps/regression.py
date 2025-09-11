@@ -110,7 +110,7 @@ class DecisionTreeRegressor:
             thresholds = (xs_sorted[:-1] + xs_sorted[1:]) / 2 # candidate split thresholds
             idxs = np.nonzero(diffs)[0] + 1 # gives the indices where changes happen, so a split is possible
 
-            # Cumulative Sums
+            # Cumulative sums
             cum_y = np.cumsum(y_sorted)
             cum_y_sq = np.cumsum(y_sq_sorted)
 
@@ -138,7 +138,7 @@ class DecisionTreeRegressor:
                 best_th = thresholds[loc]
 
         if best_err == np.inf or best_feat is None or best_th is None:
-            return node  # no valid split
+            return node # no valid split
 
         node['feature'] = int(best_feat)
         node['threshold'] = float(best_th)

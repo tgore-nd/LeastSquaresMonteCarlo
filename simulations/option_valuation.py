@@ -83,7 +83,35 @@ def estimate_cash_flow_matrix(S: np.ndarray, K: float, r: float | np.ndarray, v:
 
 
 def estimate_continuation_value(S: np.ndarray, K: float, r: float | np.ndarray, v: np.ndarray | None, tau: float, type: Literal["call", "put"], basis_expansion: Callable = basis_expansions.polynomial_basis, regressor_class: Type[regression.LinearRegressor] | Type[regression.DecisionTreeRegressor] | Type[regression.RandomForestRegressor] = regression.LinearRegressor, N: int = 2) -> float:
-    """Estimate the continuation value of an option using least-squares Monte Carlo (LCM). Use an Nth-degree basis_expansion."""
+    """
+    Estimate the continuation value of an option using least-squares Monte Carlo (LSM). Use an `N`th-degree basis_expansion.
+    
+    Parameters
+    ----------
+    S : np.ndarray
+        The M x N stock price matrix with M price paths and N time steps.
+    K : float
+        The strike price of the option.
+    r : float | np.ndarray
+        The constant interest rate or M x N matrix of interest rate paths.
+    v : np.ndarray | None
+        The volatility matrix. Some models may not have stochastic volatility, in which case you would use `None`.
+    tau : float
+        The amount of time (in years) until the option expires.
+    type : Literal["call", "put"]
+        The type of the option.
+    basis_expansion : Callable
+        The basis expansion function, which should take one column of the matrix of paths and return a matrix of features for the regression. A polynomial basis is used by default.
+    regressor_class : LinearRegressor | DecisionTreeRegressor | RandomForestRegressor
+        The regression model to be used.
+    N : int
+        The degree of the basis expansion. Note that this is *different* from the number of time steps defining the number of columns in `S`. Set to `2` by default.
+
+    Returns
+    -------
+    estimation : float
+        The LSM-estimated value of the option, given the entered parameters.
+    """
     cash_flow_matrix = estimate_cash_flow_matrix(S, K, r, v, tau, type, basis_expansion, regressor_class, N, include_t0_column=False)
 
     return np.sum(np.mean(cash_flow_matrix, axis=0)) # average each path (already discounted), then add all averages
@@ -108,8 +136,6 @@ def paper_example() -> None:
     ]) # M > N
     
     print(estimate_continuation_value(S, K, r, None, tau, "put")) # this exactly equals the value in the paper for squared polynomial basis expansion
-    # print(estimate_continuation_value(S, K, r, None, tau, "put", regressor_class=regression.DecisionTreeRegressor)) # the decision tree also converges nicely
-    # print(estimate_continuation_value(S, K, r, None, tau, "put", regressor_class=regression.RandomForestRegressor))
 
 if __name__ == "__main__":
     paper_example()

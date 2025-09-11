@@ -6,15 +6,25 @@ from scipy.interpolate import RegularGridInterpolator
 
 def cn_max_payoff(option_type: Literal["call", "put"], S0: float, S_max: float, K: float, tau: float, r: float, sigma: float, N: int, M: int, early_exercise: bool = True) -> float:
     """
-    option_type: call or put
-    S_max: the largest price considered in the discretized S grid
-    K: strike price
-    tau: time to expiration (in years)
-    r: risk-free rate
-    sigma: annualized volatility of the underlying
-    N: number of discrete steps to divide the time interval
-    M: number of discrete steps to divide the stock price axis
-    early_exercise: whether or not to include early exercise functionality
+    Parameters
+    ----------
+    option_type : call or put
+    S_max : float
+        the largest price considered in the discretized S grid
+    K : float
+        strike price
+    tau : float
+        time to expiration (in years)
+    r : float
+        risk-free rate
+    sigma : float
+        annualized volatility of the underlying
+    N : int
+        number of discrete steps to divide the time interval
+    M : int
+        number of discrete steps to divide the stock price axis
+    early_exercise : bool
+        Whether or not to include early exercise functionality. Default is `True`.
     """
     dt = tau / M
     S = np.linspace(0, S_max, N + 1)
@@ -83,27 +93,48 @@ def heston_hull_white_ADI(option_type: Literal["call", "put"], S0: float, v0: fl
     """
     Parameters
     ----------
-    option_type: call or put
-    S0: the current actual price of the underlying
-    r0: initial interest rate
-    v0: initial variance
-    K: strike price of the option
-    S_max: maximum value of asset price grid S
-    v_max: maximum value of volatility grid in Heston model
-    r_max: maximum value of interest rate grid in Hull-White model
-    N_S: number of grid steps in the asset price direction
-    N_v: number of grid steps in the volatility direction
-    N_r: number of grid steps in the interest rate direction
-    M_time: number of time steps used in time discretization
-    tau: time until expiration (in years)
-    kappa: speed of mean reversion process in Heston model
-    theta: long term mean of variance process
-    sigma: volatility of volatility in Heston model
-    rho: correlation between asset price and variance processes
-    a: speed of mean reversion of the short rate in Hull-White model
-    b: long-term mean level of the short rate
-    eta: volatility of the short rate
-    r_discount: discount rate or function used for present value calculations
+    option_type : Literal["call", "put"]
+        call or put
+    S0 : float
+        the current actual price of the underlying
+    r0 : float
+        initial interest rate
+    v0 : float
+        initial variance
+    K : float
+        strike price of the option
+    S_max : float
+        maximum value of asset price grid S
+    v_max : float
+        maximum value of volatility grid in Heston model
+    r_max : float
+        maximum value of interest rate grid in Hull-White model
+    N_S : int
+        number of grid steps in the asset price direction
+    N_v : int
+        number of grid steps in the volatility direction
+    N_r : int
+        number of grid steps in the interest rate direction
+    M_time : int
+        number of time steps used in time discretization
+    tau : float
+        time until expiration (in years)
+    kappa : float
+        speed of mean reversion process in Heston model
+    theta : float
+        long term mean of variance process
+    sigma : float
+        volatility of volatility in Heston model
+    rho : rho
+        correlation between asset price and variance processes
+    a : float
+        speed of mean reversion of the short rate in Hull-White model
+    b : float
+        long-term mean level of the short rate
+    eta : float
+        volatility of the short rate
+    r_discount : float
+        discount rate or function used for present value calculations
     """
     if option_type == "call":
         payoff = lambda s: np.maximum(s - K, 0)
@@ -265,7 +296,6 @@ if __name__ == "__main__":
     M_time = 100
 
     start = time.perf_counter()
-    # V = cn_max_payoff("put", S0, S_max, K, tau, 0.03, sigma, N_S, M_time)
     V = heston_hull_white_ADI("put", S0, v0, r0, K, S_max, v_max, r_max, N_S, N_v, N_r, M_time, tau, kappa, theta, sigma, rho, a, b, eta)
     end = time.perf_counter()
     print(f"Elapsed time: {end - start} seconds")

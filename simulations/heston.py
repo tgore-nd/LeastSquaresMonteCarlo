@@ -51,20 +51,35 @@ def simulate_batch_heston_hull_white(S0: float, v0: float, r0: float, kappa: flo
 
 def generate_heston_paths(tau: float, kappa: float, theta: float, sigma: float, rho: float, v0: float, S0: float, r: float, N: int, M: int, num_parallel_procs: int = cpu_count()) -> tuple[np.ndarray, np.ndarray]:
     """
-    Inputs:
-     - tau    : time of simulation in years
-     - kappa  : rate of mean reversion in variance process
-     - theta  : long-term mean of variance process
-     - sigma  : vol of vol / volatility of variance process
-     - rho    : correlation between asset returns and variance
-     - S0, v0 : initial parameters for asset and variance
-     - r      : interest rate
-     - N      : number of time steps
-     - M      : number of asset paths
+    Generate sample paths using Bayesian-estimated parameters.
     
-    Outputs:
-    - asset prices over time
-    - variance over time
+    Parameters
+    ---------
+    tau : float
+        time of simulation (in years)
+    kappa : float
+        rate of mean reversion in variance process
+    theta : float
+        long-term mean of variance process
+    sigma : float
+        vol of vol / volatility of variance process
+    rho : float
+        correlation between asset returns and variance
+    S0 : float
+        initial parameter for asset price
+    v0 : float
+        initial parameter for variance
+    r : float
+        interest rate
+    N : int
+        number of time steps
+    M : int
+        number of asset paths
+    
+    Returns
+    -------
+    asset_price_path : np.ndarray
+    variance_path : np.ndarray
     """
     # initialise other parameters
     dt = tau/N

@@ -114,7 +114,7 @@ def estimate_optimal_time_steps(basis_expansion: Callable, basis_expansion_degre
     raise ValueError("LSM did not converge! Make sure M isn't to large (overfitting) and that time_step_range explores enough of the space.")
 
 if __name__ == "__main__":
-    # print(estimate_optimal_basis_degree(basis_expansions.laguerre_basis, range(1, 6)))
+    print(estimate_optimal_basis_degree(basis_expansions.laguerre_basis, range(1, 6)))
     # Note: Eventually, you reach a point where adding additional degrees to the basis expansion doesn't do anything. Choose the smallest order to avoid too much variance.
 
     # Estimate the optimal number of time steps to match finite difference solution
