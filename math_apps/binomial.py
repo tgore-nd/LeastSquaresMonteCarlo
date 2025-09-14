@@ -4,11 +4,18 @@ from typing import Literal
 
 def binomial_value(option_type: Literal["call", "put"], S0: float, K: float, r: float, tau: float, iv: float, n: int) -> np.ndarray:
     """
-    option_type: call or put
-    S0: current price of the underlying
-    K: strike price
-    r: interest rate (decimal between 0 and 1)
-    tau: time until expiration (in years)
+    Parameters
+    ----------
+    option_type : 
+        call or put
+    S0 : 
+        current price of the underlying
+    K : 
+        strike price
+    r : 
+        interest rate (decimal between 0 and 1)
+    tau : 
+        time until expiration (in years)
     iv: implied volatility (decimal between 0 and 1)
     n: number of timesteps
     """

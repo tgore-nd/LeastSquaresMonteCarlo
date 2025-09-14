@@ -44,6 +44,22 @@ def estimate_convergence_path(basis_expansion: Callable, S_master: np.ndarray, K
 
 
 def estimate_optimal_basis_degree(basis_expansion: Callable, degree_range: range) -> tuple[tuple[int, int], list[tuple[int, int]]]:
+    """
+    For a given `basis_expansion`, for each element in `degree_range`, find the minimum number of paths `M` required for convergence.
+    
+    Parameters
+    ----------
+    basis_expansion : Callable
+        The basis expansion function found in `basis_expansions.py`.
+    degree_range: range
+        The range of basis expansion degrees over which to iterate
+    
+    Returns
+    -------
+    optimal_expansion, total_results
+
+    This takes the form: (degree, M)
+    """
     # Parameters -- all paths will use these
     kappa = 2.0
     theta = 0.04
@@ -70,6 +86,26 @@ def estimate_optimal_basis_degree(basis_expansion: Callable, degree_range: range
 
 
 def estimate_optimal_time_steps(basis_expansion: Callable, basis_expansion_degree: int, time_step_range: range, M: int = 10000, tol: float = 1e-2) -> tuple[int, float, float, list[float]]:
+    """
+    Estimate the number of time steps needed for the discrete solution to converge to the continuous solution.
+
+    Parameters
+    ----------
+    basis_expansion : Callable
+        The basis expansion function found in `basis_expansions.py`.
+    basis_expansion_degree : int
+        The degree of the basis expansion. For example, 2 under a polynomial basis would be a square basis.
+    time_step_range : range
+        The range of `N` values to check.
+    M : int
+        The number of paths to use. Default is 10000.
+    tol : float
+        The tolerance of the convergence. Default is 1e-2.
+    
+    Returns
+    -------
+    num_timesteps, converging_option_val, target_value, list_of_values_over_prev_steps
+    """
     # Heston params
     kappa = 2.0
     theta = 0.04

@@ -1,18 +1,24 @@
 # Least-Squares Monte Carlo Options Pricing Algorithm
 ## Overview
-For this project, I:
-* 
+### Features
+* A working Python implementation of the Least-Squares Monte Carlo (LSM) options pricing method, as seen in Longstaff-Schwartz (2001), implemented directly in NumPy
+* NumPy implementations of linear regression, regularization, decision trees, and random forests from scratch
+* Parameter selection methods to find optimal (efficient) basis expansions and time steps
+* Multithreaded evaluations of LSM to significantly boost speed of valuation processes
+* Finite difference implementations to value options under the Heston and Heston-Hull-White models to serve as a baseline for LSM tuning
 
-**About me:** I am a Physics & Applied Mathematics major at the University of Notre Dame. I have extensive experience in data analytics, mathematical modeling, and machine learning throughout experimental nuclear physics, an NSF undergraduate research fellowship, and a quantitative finance internship. If you would like to get in touch, please reach out via email at [tgore@nd.edu](mailto:tgore@nd.edu).
+### About Me
+I am a Physics & Applied Mathematics major at the University of Notre Dame. I have extensive experience in data analytics, mathematical modeling, and machine learning throughout experimental nuclear physics, an NSF undergraduate research fellowship, and a quantitative finance internship. If you would like to get in touch, please reach out via email at [tgore@nd.edu](mailto:tgore@nd.edu).
 
 ## Introduction
 ### Finite Differencing
 Determining the fair value of an option is a central problem throughout trading. Various analytical and numerical methods exist in the options pricing realm. 
 
-If we choose to model options using a low-dimensional (few factor) model, the *finite difference* method of option pricing can prove useful. Here, we approximate the model's partial derivative terms as small finite differences in the dependent variable $y$ divided by the independent variable $x$. For first-order derivatives, assuming a sufficiently small step size $h$, this looks like:
+If we choose to model options using a low-dimensional (few factor) model, the *finite difference* method of option pricing can prove useful. Here, we approximate the model's partial derivative terms as small finite differences in the function value $y$ divided by the independent variable $x$. For first-order derivatives, assuming a sufficiently small step size $h$, this looks like:
 $$
 \begin{aligned}
-    \frac{\partial y}{\partial x} &\approx \frac{y(x+h) - y(x)}{h}
+    \text{Forward Differnce: }\frac{\partial y}{\partial x} &\approx \frac{y(x+h) - y(x)}{h}\\
+    \text{Central Difference: }\frac{\partial y}{\partial x} &\approx \frac{y(x+h) - y(x-h)}{2h}
 \end{aligned}
 $$
 
@@ -21,7 +27,7 @@ When evaluating such an equation computationally, we take some small but finite 
 ### Least-Squares Monte Carlo
 In 2001, Francis Longstaff and Eduardo Schwartz introduced the *least-squares Monte Carlo* (LSM) approach to option pricing. Instead of discretizing a partial differential equation, LSM uses $N$ asset price paths simulated using a stochastic model to estimate the option's optimal exercise points. In general, we should exercise an option if its exercise value, the value of exercising the option at the current time step, is greater than its continuation value, the value of exercising the option in the future.
 
-To optimally exercise the option along each price path, we must be able to estimate the value of exercising the option in the future and compare it to the value of exercising the option in the present. Let $\mathbf{X}$ represent the matrix of simulated future price paths. Each of $M$ rows represents an individual pricepath, and each of $N$ columns represents an individual time step. To estimate the continuation value of the option, we will first regress the exercise value one step in the future $Y_{t+1}$ on some basis expansion of the current simulated stock price $f(X_t)$.
+To optimally exercise the option along each price path, we must be able to estimate the value of exercising the option in the future and compare it to the value of exercising the option in the present. Let $\mathbf{X}$ represent the matrix of simulated future price paths. Each of $M$ rows represents an individual price path, and each of $N$ columns represents an individual time step. To estimate the continuation value of the option, we will first regress the realized discounted cash flow from continuing one step in the future $Y_{t+1}$ on some basis expansion of the current simulated stock price $f(X_t)$.
 $$
 \begin{aligned}
     Y_{t+1} &= f(X_t) + \text{bias}
@@ -30,7 +36,7 @@ $$
 
 Note that both $Y_{t+1}$ and $X_t$ are vectors representing columns of exercise values and stock prices (and other stochastically modeled terms, like interest rates or volatility) at $t+1$ and $t$, respectively, across all $M$ simulated price paths. The regression itself can be performed using various methods, from simple linear regression to random forests. The regression's prediction $\hat{Y}_t$ is used to estimate the continuation value of the option at every step. The reason we bother regressing at all is because, if we merely used the exercise values computed via the true price at the next time step $X_{t+1}$, we would expose ourselves to a lookahead bias by conditioning on *future randomness*, and we would fail to capture the noise inherent in option valuation. By regressing at each step, we are predicting the continuation value conditional on *past information*, which is much more reasonable. Moreover, since we are computing an expectation across many paths, we filter out the noise from future randomness and therefore obtain a reasonable estimate for the option's value.
 
-To optimally exercise the option along each path, we exercise at the earliest point when the immediate exercise value is greater than the regression-estimated continuation value. Following this rule, we can average over the discounted cash flows of optimally exercising the option along different time steps and then sum over all time steps. The value we obtain from this procedure is the LSM-estimated value of the option.
+To optimally exercise the option along each path, we exercise at the earliest point when the immediate exercise value is greater than the regression-estimated continuation value. Following this rule, we can identify the first optimal exercise time and record the discounted payoff from that time. After this is done for each path, we finally average across all paths.
 
 ## Implementation
 To ensure a robust understanding of the underlying mathematical and computational processes making LSM possible, I used only NumPy in my implementation, implementing all forms of regression, basis expansions, finite difference methods, and LSM itself using only NumPy arrays. NumPy is a powerful vectorized scientific computing package, and given the size of the asset price arrays that can be encountered here, its performance is extremely useful.
@@ -56,7 +62,7 @@ To provide a baseline for LSM estimates, I wrote two finite difference algorithm
 Again, it should be noted that solving systems using a finite difference method becomes computationally infeasible as the dimensions of the problem increase. While the dimensions of the Heston or Heston-Hull-White models are (relatively) small, LSM would be the more computationally feasible way to conduct an option valuation scheme when the dimensions of the problem are large, such as those with many stochastic interest rates. In this project, the finite difference methods are used more as a baseline with which to compare the LSM estimations, so I will not devote further time to them.
 
 ### Regression Types
-Various types of regression can be used at each time step to estimate the continuation value. The simplest method is to perform a simple linear regression, predicting the next exercise value using the current stock price. We can also use multiple linear regression, applying some basis expansion of the stock price as the features to predict the next exercise value. This is a fast and effective method, and the parameter selection methods discussed earlier can allow for this method to be tuned more effectively. I implemented linear regression, alongside an optimal ridge penalty, completely manually in NumPy.
+Various types of regression can be used at each time step to estimate the continuation value. The simplest method is to perform a simple linear regression, predicting the next continuation value using the current stock price. We can also use multiple linear regression, applying some basis expansion of the stock price as the features to predict the next continuation value. This is a fast and effective method, and the parameter selection methods discussed earlier can allow for this method to be tuned more effectively. I implemented linear regression, alongside an optimal ridge penalty, completely manually in NumPy.
 
 There are other regression methods that have promising results when used in LSM. One of these is decision tree regression, which I implemented manually in NumPy using the CART algorithm. This is essentially a recursive algorithm that builds each node of the tree by greedily selecting the split in each feature at each node by minimizing the variance resulting from that split. The recursion stops when some maximum depth is reached. I also manually implemented a random forest regressor that uses multiprocessing to build several decision trees in parallel and average their predictions. Both of these methods have promising results. Generally, random forests are good for reducing variance at the cost of some bias when variance is a problem in the LSM estimate.
 
@@ -78,7 +84,7 @@ $$
 \end{aligned}
 $$
 
-Consider an American-style put option with a strike $K=1.10$, a risk-free rate of $0.06$, and an expiration date $\tau=1$ year away. Our goal is to find the option value at $t=0$. For this example, we mirror the approach taken by the authors, using a second-degree polynomial expansion of the stock price to predict the next-step exercise value.
+Consider an American-style put option with a strike $K=1.10$, a risk-free rate $r=0.06$, and an expiration date $\tau=1$ year away. Our goal is to find the option value at $t=0$. For this example, we mirror the approach taken by the authors, using a second-degree polynomial expansion of the stock price to predict the next-step continuation value.
 
 After running `estimate_continuation_value` with these parameters, we get a value $V=0.1144$, which exactly equals that predicted by Longstaff-Schwartz (2001). The model therefore valid in its predictions. This analysis can be very easily replicated using the `paper_example()` function.
 
