@@ -15,12 +15,10 @@ I am a Physics & Applied Mathematics major at the University of Notre Dame. I ha
 Determining the fair value of an option is a central problem throughout trading. Various analytical and numerical methods exist in the options pricing realm. 
 
 If we choose to model options using a low-dimensional (few factor) model, the *finite difference* method of option pricing can prove useful. Here, we approximate the model's partial derivative terms as small finite differences in the function value $y$ divided by the independent variable $x$. For first-order derivatives, assuming a sufficiently small step size $h$, this looks like:
-$$
-\begin{aligned}
-    \text{Forward Differnce: }\frac{\partial y}{\partial x} &\approx \frac{y(x+h) - y(x)}{h}\\
-    \text{Central Difference: }\frac{\partial y}{\partial x} &\approx \frac{y(x+h) - y(x-h)}{2h}
-\end{aligned}
-$$
+
+$$ \text{Forward Differnce: }\frac{\partial y}{\partial x} \approx \frac{y(x+h) - y(x)}{h} $$
+
+$$ \text{Central Difference: }\frac{\partial y}{\partial x} \approx \frac{y(x+h) - y(x-h)}{2h} $$
 
 When evaluating such an equation computationally, we take some small but finite $h$ and compute the partial derivative across a discrete grid of points. For first-order derivatives and one-dimensional problems, this appears to be a simple task and can be numerically evaluated very easily. In higher dimensions, however, where we have many independent variables $x_n$ affecting our option value $V$, iterating over this grid becomes prohibitively expensive. Given that an option's price is clearly driven by many variables, a technique for pricing options in high-dimensional spaces is required.
 
@@ -28,13 +26,10 @@ When evaluating such an equation computationally, we take some small but finite 
 In 2001, Francis Longstaff and Eduardo Schwartz introduced the *least-squares Monte Carlo* (LSM) approach to option pricing. Instead of discretizing a partial differential equation, LSM uses $N$ asset price paths simulated using a stochastic model to estimate the option's optimal exercise points. In general, we should exercise an option if its exercise value, the value of exercising the option at the current time step, is greater than its continuation value, the value of exercising the option in the future.
 
 To optimally exercise the option along each price path, we must be able to estimate the value of exercising the option in the future and compare it to the value of exercising the option in the present. Let $\mathbf{X}$ represent the matrix of simulated future price paths. Each of $M$ rows represents an individual price path, and each of $N$ columns represents an individual time step. To estimate the continuation value of the option, we will first regress the realized discounted cash flow from continuing one step in the future $Y_{t+1}$ on some basis expansion of the current simulated stock price $f(X_t)$.
-$$
-\begin{aligned}
-    Y_{t+1} &= f(X_t) + \text{bias}
-\end{aligned}
-$$
 
-Note that both $Y_{t+1}$ and $X_t$ are vectors representing columns of exercise values and stock prices (and other stochastically modeled terms, like interest rates or volatility) at $t+1$ and $t$, respectively, across all $M$ simulated price paths. The regression itself can be performed using various methods, from simple linear regression to random forests. The regression's prediction $\hat{Y}_t$ is used to estimate the continuation value of the option at every step. The reason we bother regressing at all is because, if we merely used the exercise values computed via the true price at the next time step $X_{t+1}$, we would expose ourselves to a lookahead bias by conditioning on *future randomness*, and we would fail to capture the noise inherent in option valuation. By regressing at each step, we are predicting the continuation value conditional on *past information*, which is much more reasonable. Moreover, since we are computing an expectation across many paths, we filter out the noise from future randomness and therefore obtain a reasonable estimate for the option's value.
+$$ Y_{t+1} = f(X_t) + \text{bias} $$
+
+Note that both $Y_{t+1}$ and $X_t$ are vectors representing columns of exercise values and stock prices (and other stochastically modeled terms, like interest rates or volatility) at $t+1$ and $t$, respectively, across all $M$ simulated price paths. The regression itself can be performed using various methods, from simple linear regression to random forests. The regression's prediction $\hat{Y}\_t$ is used to estimate the continuation value of the option at every step. The reason we bother regressing at all is because, if we merely used the exercise values computed via the true price at the next time step $X_{t+1}$, we would expose ourselves to a lookahead bias by conditioning on *future randomness*, and we would fail to capture the noise inherent in option valuation. By regressing at each step, we are predicting the continuation value conditional on *past information*, which is much more reasonable. Moreover, since we are computing an expectation across many paths, we filter out the noise from future randomness and therefore obtain a reasonable estimate for the option's value.
 
 To optimally exercise the option along each path, we exercise at the earliest point when the immediate exercise value is greater than the regression-estimated continuation value. Following this rule, we can identify the first optimal exercise time and record the discounted payoff from that time. After this is done for each path, we finally average across all paths.
 
@@ -69,9 +64,8 @@ There are other regression methods that have promising results when used in LSM.
 ## Results
 ### Paper Example
 In Longstaff-Schwartz (2001), a simple example is presented that can easily validate the accuracy of this implementation. The example considers a matrix of future price paths $\mathbf{X}$ as follows, with the columns representing each time step, starting with $t=0$ (the present, known value, before the simulated values), and the rows representing each of $M=8$ paths:
-$$
-\begin{aligned}
-    \mathbf{X} = \begin{bmatrix}
+
+$$ \mathbf{X} = \begin{bmatrix}
     1.00 & 1.09 & 1.08 & 1.34 \\
     1.00 & 1.16 & 1.26 & 1.54 \\
     1.00 & 1.22 & 1.07 & 1.03 \\
@@ -80,9 +74,7 @@ $$
     1.00 & 0.76 & 0.77 & 0.90 \\
     1.00 & 0.92 & 0.84 & 1.01 \\
     1.00 & 0.88 & 1.22 & 1.34
-    \end{bmatrix}
-\end{aligned}
-$$
+    \end{bmatrix} $$
 
 Consider an American-style put option with a strike $K=1.10$, a risk-free rate $r=0.06$, and an expiration date $\tau=1$ year away. Our goal is to find the option value at $t=0$. For this example, we mirror the approach taken by the authors, using a second-degree polynomial expansion of the stock price to predict the next-step continuation value.
 
@@ -96,7 +88,7 @@ In applying the optimal $N$ method described earlier, we can easily visualize th
     <img src="images/LSM_Convergence.png" alt="convergence"/>
 </p>
 
-We can clearly see that ~$750$ time steps are needed for the LSM to converge to the finite-difference solution. In general, using fewer time steps is advantageous, as it regularizes the fit and reduces variance. This convergence method allows one to select an $N$ value that is both large enough to converge to the continuous case but small enough so that the variance of the LSM fit is not too large.
+We can clearly see that ~750 time steps are needed for the LSM to converge to the finite-difference solution. In general, using fewer time steps is advantageous, as it regularizes the fit and reduces variance. This convergence method allows one to select an $N$ value that is both large enough to converge to the continuous case but small enough so that the variance of the LSM fit is not too large.
 
 ### Overall Takeaways
 Overall, this implementation of the Least-Squares Monte Carlo options pricing algorithm provides a good way to value options in high-dimensional spaces, keeping computational complexity in mind. Developing this project gave me a good excuse to study different stochastic models for stock market variables, like the Heston-Hull-White model. Additionally, I implemented every part of this project (excluding one line in the ADI finite difference solution) using only NumPy, which was a challenge since I had to delve into the mathematical nuances of these different approaches, from the stochastic models informing the LSM fit to the different machine learning methods that can generate LSM estimates. Finally, this project included many good use cases for multiprocessing, as many operations that are typically looped can be executed in parallel much more quickly. 
